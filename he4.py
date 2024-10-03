@@ -89,6 +89,7 @@ def NextState(psisq,R,psi,Stot,Ttot,npart,spin_states,isospin_states,phi_interpo
       for n in range(npart):
         r_trial[n][m]+=particle_dx*random.uniform(-.5, .5)
     GenerateWF(psi_trial,Stot,Ttot,npart,spin_states,isospin_states,phi_interpolator,r_trial)
+    psisq_trial = dot(psi_trial,psi_trial,ns,nt)
     rn = random.uniform(0,1)
     accepted = (psisq_trial > psisq) or (psisq_trial > (rn*psisq))
     if accepted:
@@ -139,5 +140,5 @@ if __name__=='__main__':
   R=[r0,r1,r2,r3]
   psisq = 0
   #burn in
-  NextState(psisq,R,psi,Stot,Ttot,npart,spin_states,isospin_states,sphi_interp,particle_dx,num_moves=1000)
+  NextState(psisq,R,psi,stot,ttot,npart,spin_states,isospin_states,sphi_interp,particle_dx,num_moves=1000)
   print(psisq)
