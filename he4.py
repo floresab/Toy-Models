@@ -9,6 +9,15 @@ def dot(psi1,psi2,ns,nt):
       prod += psi1[i][j]*psi2[i][j]
   return prod
 
+def tau_dot_tau(n1,n2,psi,spin_states,isospin_states):
+  o_psi = [[0 for nt in range(len(isospin_states))] for ns in range(len(spin_states))]
+  for j,t1 in enumerate(isospin_states):
+    for jp,t2 in enumerate(isospin_states):
+      for i,s in enumerate(spin_states):
+        o_psi[i][j] += (t1[n1] * t2[n2])*psi[i][jp]
+  tdt_ev = dot(psi,o_psi,ns,nt)
+  return tdt_ev
+
 def WoodsSaxon(r,V_0,R,a):
   return V_0/(1+np.exp((r-R)/a))
 
@@ -140,6 +149,22 @@ if __name__=='__main__':
   psisq = 0
   #burn in
   NextState(psisq,R,psi,stot,ttot,npart,spin_states,isospin_states,sphi_interp,particle_dx,num_moves=1000)
-  GenerateWF(psi,stot,ttot,npart,spin_states,isospin_states,sphi_interp,R)
-  psisq = dot(psi,psi,ns,nt)
-  print(psisq)
+
+  num_blocks = 5
+  num_configs = 500
+  block_e =0
+  for blocks in range(num_blocks):
+    local_e = 0
+    for configs in range(num_configs):
+      NextState(psisq,R,psi,stot,ttot,npart,spin_states,isospin_states,sphi_interp,particle_dx)
+      GenerateWF(psi,stot,ttot,npart,spin_states,isospin_states,sphi_interp,R)
+      psisq = dot(psi,psi,ns,nt)
+      tdt = 0
+      for n1 in range(npart)
+        for n2 in range(n1+1,npart)
+          tdt += tau_dot_tau(n1,n2,psi,spin_states,isospin_states)
+      local_e += tdt/psisq
+    block_e += local_e/num_configs
+
+  total_e = block_e/num_blocks
+  print(f"E: {total_e}")
