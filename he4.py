@@ -2,6 +2,13 @@ import numpy as np
 import random
 from scipy.interpolate import CubicSpline
 
+def dot(psi1,psi2,ns,nt):
+  prod = 0
+  for i in range(ns):
+    for j in range(nt):
+      prod += psi1[i][j]*psi2[i][j]
+  return prod
+
 def WoodsSaxon(r,V_0,R,a):
   return V_0/(1+np.exp((r-R)/a))
 
@@ -117,3 +124,5 @@ if __name__=='__main__':
   r3 = [0,0,-0.5]
   R=[r0,r1,r2,r3]
   GenerateWF(psi,stot,ttot,npart,spin_states,isospin_states,sphi_interp,R)
+  psisq = dot(psi,psi,ns,nt)
+  print(psisq)
