@@ -61,7 +61,6 @@ def generateAllBinaryStrings(n, arr, i,full_arr):
   return
 
 def GenerateWF(psi,Stot,Ttot,npart,spin_states,isospin_states,phi_interpolator,R):
-  r0,r1,r2,r3 = R
   for i,s in enumerate(spin_states):
     for j,t in enumerate(isospin_states):
       perm = [(ss,tt) for ss,tt in zip(s,t)]
@@ -74,23 +73,38 @@ def GenerateWF(psi,Stot,Ttot,npart,spin_states,isospin_states,phi_interpolator,R
           ylm = np.sqrt(1/(4*np.pi)) #just swave
           r_core = [R[nn] for nn in range(npart) if nn != n]
           r_val = R[n]
-          rcm = [sum([xyz[i] for xyz in r_core])/(npart-1) for i in range(3)]
-          rval = np.sqrt(sum([(r_val[i]-rcm[i])**2 for i in range(3)]))
-          amp *= phi_interpolator(rval)*ylm
+          rcm = [sum([xyz[ii] for xyz in r_core])/(npart-1) for ii in range(3)]
+          rr = np.sqrt(sum([(r_val[ii]-rcm[ii])**2 for ii in range(3)]))
+          amp *= phi_interpolator(rr)*ylm
         amp *= parity_of_permutation(perm)
       psi[i][j]=amp
   return
 
-def NextState(psi):
-  return 1
+def NextState(psisq,R,psi,Stot,Ttot,npart,spin_states,isospin_states,phi_interpolator,particle_dx,num_moves=5):
+  psi_trial = psi.copy()
+  for mov in range(num_moves):
+    print(R)
+    r_trial = R.copy()
+    for m in range(3):
+      for n in range(npart):
+        r_trial[n][m]+=particle_dx*random.uniform(-.5, .5)
+    GenerateWF(psi_trial,Stot,Ttot,npart,spin_states,isospin_states,phi_interpolator,r_trial)
+    rn = random.uniform(0,1)
+    accepted = (psisq_trial > psisq) or (psisq_trial > (rn*psisq))
+    if accepted:
+      R=r_trial.copy()
+      psisq=psisq_trial
+  return
 
 if __name__=='__main__':
+  random.seed(123)
   npart = 4
   nprot = 2
   stot = 0
   ttot = 0
   arr=[0 for n in range(npart)]
   full_arr = []
+  particle_dx = 1.2 #fm 
 
   V0 = 50
   Rws = 1.2*npart**(1/3)
@@ -123,6 +137,7 @@ if __name__=='__main__':
   r2 = [0,0.5,0]
   r3 = [0,0,-0.5]
   R=[r0,r1,r2,r3]
-  GenerateWF(psi,stot,ttot,npart,spin_states,isospin_states,sphi_interp,R)
-  psisq = dot(psi,psi,ns,nt)
+  psisq = 0
+  #burn in
+  NextState(psisq,R,psi,Stot,Ttot,npart,spin_states,isospin_states,sphi_interp,particle_dx,num_moves=1000)
   print(psisq)
