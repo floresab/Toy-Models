@@ -1,6 +1,6 @@
 import numpy as np
 import random
-#import scipy
+from scipy.interpolate import CubicSpline
 
 def WoodsSaxon(r,V_0,R,a):
   return V_0/(1+np.exp((r-R)/a))
@@ -20,22 +20,21 @@ def Numerov(V, E, h, r, m, l):
   return psi
 
 def parity_of_permutation(perm):
-    """
-    Calculates the parity of a given permutation. 
-    
-    Args:
-        perm: A list representing a permutation. 
-    
-    Returns:
-        int: 1 if the permutation is even, -1 if odd. 
-    """
-    n = len(perm)
-    inversions = 0
-    for i in range(n):
-        for j in range(i+1, n):
-            if perm[i] > perm[j]:
-                inversions += 1
-    return 1 if inversions % 2 == 0 else -1 
+    natural = [(-1,-1),(-1,1),(1,-1),(1,1)]
+    exchange=0
+    num_diff = sum([0 if p == n else 1 for p,n in zip(perm,natural)])
+    if num_diff in [0,3]:
+      return 1
+    elif num_diff == 2:
+      return -1
+    else: #num_diff = 4
+      idx = perm.index(natural[0])
+      perm[0],perm[idx] = perm[idx],perm[0]
+      num_diff = sum([0 if p == n else 1 for p,n in zip(perm,natural)])
+      if num_diff == 2:
+        return 1
+      else:
+        return -1
 
 # Function to generate all binary strings 
 def generateAllBinaryStrings(n, arr, i,full_arr): 
@@ -54,43 +53,25 @@ def generateAllBinaryStrings(n, arr, i,full_arr):
   generateAllBinaryStrings(n, arr, i + 1,full_arr) 
   return
 
-def GenerateWF(psi,Stot,Ttot,npart,spin_states,isospin_states,phi,R,swap=False):
+def GenerateWF(psi,Stot,Ttot,npart,spin_states,isospin_states,phi_interpolator,R):
   r0,r1,r2,r3 = R
   for i,s in enumerate(spin_states):
     for j,t in enumerate(isospin_states):
-      s0,s1,s2,s3 = s
-      t0,t1,t2,t3 = t
-      amp=1
-      if swap:
-        r_swap = [r1,r0,r2,r3]
-        s_swap = [s1,s0,s2,s3]
-        t_swap = [t1,t0,t2,t3]
-        spin_good = sum(s_swap) == Stot
-        pauli_good = sum([ss*tt if tt==1 else 0 for ss,tt in zip(s_swap,t_swap)]) == 0
-        if (spin_good and pauli_good):
-          for n in range(npart):
-            ylm = np.sqrt(1/(4*np.pi)) #just swave
-            rval = 1
-            r_idx = 10
-            amp *= 1#phi[r_idx*n+1]*ylm
-          amp *= parity_of_permutation(s_swap)
-        else:
-          amp=0
-        psi[i][j]=amp
-      else:
-        spin_good = sum(s) == Stot
-        pauli_good = sum([ss*tt if tt==1 else 0 for ss,tt in zip(s,t)]) == 0
-        if (spin_good and pauli_good):
-          for n in range(npart):
-            ylm = np.sqrt(1/(4*np.pi)) #just swave
-            rval = 1
-            r_idx = 10
-            amp *= 1#phi[r_idx*n+1]*ylm
-          amp *= parity_of_permutation(s)
-        else:
-          amp=0
-        psi[i][j]=amp
-
+      perm = [(ss,tt) for ss,tt in zip(s,t)]
+      amp=0
+      spin_good = sum(s) == Stot
+      pauli_good = sum([ss*tt if tt==1 else 0 for ss,tt in zip(s,t)]) == 0
+      if (spin_good and pauli_good):
+        amp=1
+        for n in range(npart):
+          ylm = np.sqrt(1/(4*np.pi)) #just swave
+          r_core = [R[nn] for nn in range(npart) if nn != n]
+          r_val = R[n]
+          rcm = [sum([xyz[i] for xyz in r_core])/(npart-1) for i in range(3)]
+          rval = np.sqrt(sum([(r_val[i]-rcm[i])**2 for i in range(3)]))
+          amp *= phi_interpolator(rval)*ylm
+        amp *= parity_of_permutation(perm)
+      psi[i][j]=amp
   return
 
 def NextState(psi):
@@ -115,6 +96,7 @@ if __name__=='__main__':
   V = WoodsSaxon(r, V0, Rws, a)
   m = (npart-1)/npart
   swave_phi = Numerov(V, wsE, h, r, m, 0)
+  sphi_interp = CubicSpline(r, swave_phi)
   generateAllBinaryStrings(npart, arr, 0,full_arr)
 
   spin_states =[]
@@ -129,14 +111,9 @@ if __name__=='__main__':
   nt = len(isospin_states) # (A Z)
 
   psi = [[0 for j in range(nt)] for i in range(ns)]
-  psi_swap = [[0 for j in range(nt)] for i in range(ns)]
   r0 = [0,1,2]
   r1 = [-0.5,0,0]
   r2 = [0,0.5,0]
   r3 = [0,0,-0.5]
   R=[r0,r1,r2,r3]
-  GenerateWF(psi,stot,ttot,npart,spin_states,isospin_states,swave_phi,R)
-  GenerateWF(psi_swap,stot,ttot,npart,spin_states,isospin_states,swave_phi,R,swap=True)
-  for i in range(ns):
-    for j in range(nt):
-      print(i,j,psi[i][j],-psi_swap[i][j])
+  GenerateWF(psi,stot,ttot,npart,spin_states,isospin_states,sphi_interp,R)
