@@ -83,7 +83,6 @@ def GenerateWF(psi,Stot,Ttot,npart,spin_states,isospin_states,phi_interpolator,R
 def NextState(psisq,R,psi,Stot,Ttot,npart,spin_states,isospin_states,phi_interpolator,particle_dx,num_moves=5):
   psi_trial = psi.copy()
   for mov in range(num_moves):
-    print(R)
     r_trial = R.copy()
     for m in range(3):
       for n in range(npart):
@@ -141,4 +140,6 @@ if __name__=='__main__':
   psisq = 0
   #burn in
   NextState(psisq,R,psi,stot,ttot,npart,spin_states,isospin_states,sphi_interp,particle_dx,num_moves=1000)
+  GenerateWF(psi,stot,ttot,npart,spin_states,isospin_states,sphi_interp,R)
+  psisq = dot(psi,psi,ns,nt)
   print(psisq)
